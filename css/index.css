@@ -1,0 +1,105 @@
+/* https://wizpert.com/wizdom/drop-down-menus-in-html-css-javascript */
+
+#topNav{
+    position: relative;
+    z-index: 99;
+    }
+
+#topNav .dropDown{
+    position: relative;
+    z-index: 99;
+}
+
+#topNav .dropDown .dropable{
+    position: relative;
+    z-index: 999;
+}
+
+#topNav .dropDown .dropable .hoverDrop{
+position: absolute;
+          z-index: 999;
+display: none;
+}
+
+
+div.ui-menu {
+}
+
+div.ui-menu li {
+background-image:url('liblue.gif');
+list-style:none;
+background-image:none;
+background-repeat:none;
+background-position:0; 
+display:inline-block;
+text-align: center;
+background-color: #cccccc;
+color: #222222;
+margin: 5px 0px 5px 0px;
+border-radius: 3px;
+-moz-border-radius: 3px;
+box-shadow: 2px 3px 5px #000000;
+border: #969696 1px dashed;
+padding-left:14px;
+padding-right:14px;
+}
+
+a:link {
+text-decoration:none;
+color:#000000;
+}
+
+a:visited {
+text-decoration:none;
+color:#000000;
+}
+a:hover {color:#FF00FF;}
+a:active {color:#0000FF;}
+
+div.highlights ul {
+list-style-type:none;
+padding:0px;
+margin:0px;
+}
+
+.centered {  
+  position:fixed;
+  z-index: 100;  
+  top:50%;  
+  left:50%;  
+  margin:-240px 0 0 -200px;  
+  width:480px;  
+  height:400px;  
+}
+
+.panel {
+    background-color: #EEEEFF;
+}
+
+div.highlights {
+    padding-left:14px;
+    height: 200px;
+}
+
+div.highlights li {
+    background-image:url('liblue.gif');
+    background-repeat:no-repeat;
+    background-position:0px 5px; 
+    padding-left:14px;
+    position: relative;
+}
+
+div.bottom-banner {
+    text-align: center;
+}
+
+div.bottom-bar {
+    width: 480px;
+    position: absolute;
+    bottom:0;
+}
+
+table {
+    border: 0px;
+    float: center;
+}

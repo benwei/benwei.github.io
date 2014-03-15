@@ -3,8 +3,41 @@
 <title>
 Hello World, github.io. 
 </title>
+<link type="text/css" rel="stylesheet" href="/css/index.css">
+<script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
+<script type="text/javascript">
+
+$( document ).ready(function() {
+        $('.dropable').bind("mouseenter",function(){
+            $(this).children('.hoverDrop').stop(true,true).show();
+        }).bind("mouseleave",function(){
+            $(this).children('.hoverDrop').stop(true,true).hide();
+        });
+
+});
+</script>
 </head>
 <body>
-Hello World! b6 at github.io.
+<div class="panel centered">
+<div id="topNav" class="ui-menu">
+<ul class='dropDown'>
+<li class='dropable'>
+<a href="#" >Menu</a>
+<ul class='hoverDrop'>
+    <li><a href="/about.html">About</a></li>
+</ul> </li></ul>
+
+</div>
+
+<div class="highlights">
+<ul><li>
+This is a testing page using jQuery and html/css.
+</li></ul>
+</div>
+<div class="bottom-bar">
+<hr/>
+<div class='bottom-banner'><div class='copyright'><span>&copy;</span>2014</div> b6 at github.io</div>
+</div>
+</div>
 </body>
 </html>
