@@ -31,6 +31,16 @@ display: none;
 .fright { float:right;width:100px; } 
 .fcenter { float:center ;width:100px; } 
 
+.outer {
+    width:100%;
+}
+.inner {
+    width: 50%; 
+    margin: 0 auto;
+    /* IE 8 */
+    display: table;
+}
+
 div.ui-menu {
 }
 

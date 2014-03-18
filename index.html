@@ -3,32 +3,28 @@
 <title>
 Hello World, github.io. 
 </title>
-<link type="text/css" rel="stylesheet" href="/css/index.css">
+<link type="text/css" rel="stylesheet" href="/css/site.css">
 <script src="http://code.jquery.com/jquery-1.9.1.min.js"></script>
-<script type="text/javascript">
-
-$( document ).ready(function() {
-        $('.dropable').bind("mouseenter",function(){
-            $(this).children('.hoverDrop').stop(true,true).show();
-        }).bind("mouseleave",function(){
-            $(this).children('.hoverDrop').stop(true,true).hide();
-        });
-
-});
-</script>
+<script type="text/javascript" src="assets/main.js"></script>
 </head>
 <body>
+
 <div class="panel centered">
+<div class="outer">
+
+<div class="inner"><H1>Endless Learning</H1></div>
 <span class="menu">
 <div id="topNav" class="ui-menu">
 <ul class='dropDown'>
 <li class='dropable'>
 <a href="#" >Menu</a>
 <ul class='hoverDrop'>
-    <li><a href="/about.html">About</a></li>
+    <li><a href="/about.html" title="b6 About">About</a></li>
 </ul> </li></ul>
 </div>
 </span>
+
+</div>
 
 <div class="highlights">
 <ul><li>
@@ -37,7 +33,7 @@ This is a testing page using jQuery and html/css.
 <hr>
 <B>Free Online Books</B>
 <ul><li>
-<a href="http://git-scm.com/book/">Pro Git</a>
+<a href="http://git-scm.com/book/" target="new">Pro Git</a>
 </li></ul>
 </div>
 
