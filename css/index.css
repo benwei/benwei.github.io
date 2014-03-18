@@ -21,6 +21,15 @@ position: absolute;
 display: none;
 }
 
+/* .button a:link a:visited */
+#TopNav .button a {
+    text-decoration:none;
+    color:#000000;
+}
+
+.fleft { float:left;width:100px; } 
+.fright { float:right;width:100px; } 
+.fcenter { float:center ;width:100px; } 
 
 div.ui-menu {
 }
@@ -44,17 +53,17 @@ padding-left:14px;
 padding-right:14px;
 }
 
-a:link {
+.menu a:link {
 text-decoration:none;
 color:#000000;
 }
 
-a:visited {
+.menu a:visited {
 text-decoration:none;
 color:#000000;
 }
-a:hover {color:#FF00FF;}
-a:active {color:#0000FF;}
+.menu a:hover {color:#FF00FF;}
+.menu a:active {color:#0000FF;}
 
 div.highlights ul {
 list-style-type:none;
