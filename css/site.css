@@ -92,12 +92,11 @@ margin:0px;
 }
 
 .panel {
-    background-color: #EEEEFF;
+    background-color: #EEEEEE;
 }
 
 div.highlights {
     padding-left:14px;
-    height: 200px;
 }
 
 div.highlights li {
@@ -112,8 +111,32 @@ div.bottom-banner {
     text-align: center;
 }
 
+div.headings {
+    margin-top: 10px;
+    border-bottom: 1px solid gray;
+    font-weight: bold;
+    font-size: 200%;
+    width: 460px;
+}
+
+div.title {
+    margin-top: 10px;
+    margin-bottom: 10px;
+    border-bottom: 1px solid gray;
+    font-weight: bold;
+    font-size: 150%;
+    width: 460px;
+}
+
+div.title_2 {
+    margin-top: 8px;
+    font-weight: bold;
+    font-size: 120%;
+}
+
 div.bottom-bar {
-    width: 480px;
+    border-top: 1px solid gray;
+    width: 460px;
     position: absolute;
     bottom:0;
 }
@@ -122,3 +145,15 @@ table {
     border: 0px;
     float: center;
 }
+
+
+table.list {
+    width: 460px;
+    border: 1px solid gray;
+    float: center;
+}
+
+table.list td {
+    border: 1px solid gray;
+}
+
