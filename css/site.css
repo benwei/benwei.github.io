@@ -136,7 +136,7 @@ div.title_2 {
 div.bottom-bar {
     border-top: 1px solid gray;
     width: 460px;
-    position: absolute;
+    position: float;
     bottom:0;
 }
 
