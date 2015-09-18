@@ -1,4 +1,7 @@
 /* https://wizpert.com/wizdom/drop-down-menus-in-html-css-javascript */
+body {
+    background-color: #000000;
+}
 
 #topNav{
     position: relative;
@@ -27,15 +30,15 @@ display: none;
     color:#000000;
 }
 
-.fleft { float:left;width:100px; } 
-.fright { float:right;width:100px; } 
-.fcenter { float:center ;width:100px; } 
+.fleft { float:left;width:100px; }
+.fright { float:right;width:100px; }
+.fcenter { float:center ;width:100px; }
 
 .outer {
     width:100%;
 }
 .inner {
-    width: 50%; 
+    width: 50%;
     margin: 0 auto;
     /* IE 8 */
     display: table;
@@ -49,7 +52,7 @@ background-image:url('liblue.gif');
 list-style:none;
 background-image:none;
 background-repeat:none;
-background-position:0; 
+background-position:0;
 display:inline-block;
 text-align: center;
 background-color: #cccccc;
@@ -81,12 +84,11 @@ padding:0px;
 margin:0px;
 }
 
-.centered {  
+.centered {
   position:fixed;
-  z-index: 100;  
-  top:50%;  
-  left:50%;  
-  margin:-240px 0 0 -200px;  
+  z-index: 100;
+  left:50%;
+  margin:20 0 0 -200px;
   width:480px;
 }
 
@@ -101,7 +103,7 @@ div.highlights {
 div.highlights li {
     background-image:url('liblue.gif');
     background-repeat:no-repeat;
-    background-position:0px 5px; 
+    background-position:0px 5px;
     padding-left:14px;
     position: relative;
 }
@@ -119,7 +121,7 @@ div.headings {
 }
 
 div.title {
-    margin-top: 10px;
+    margin-top: 15px;
     margin-bottom: 10px;
     border-bottom: 1px solid gray;
     font-weight: bold;
@@ -129,30 +131,31 @@ div.title {
 
 div.title_2 {
     margin-top: 8px;
+    margin-bottom: 6px;
     font-weight: bold;
     font-size: 120%;
+}
+
+div.desc {
+    margin-left: 8px;
 }
 
 div.bottom-bar {
     border-top: 1px solid gray;
     width: 460px;
-    position: float;
-    bottom:0;
+    float: center;
 }
 
 table {
     border: 0px;
-    float: center;
 }
 
 
 table.list {
     width: 460px;
     border: 1px solid gray;
-    float: center;
 }
 
 table.list td {
     border: 1px solid gray;
 }
-
