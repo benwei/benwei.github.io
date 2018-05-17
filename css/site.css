@@ -1,6 +1,7 @@
 /* https://wizpert.com/wizdom/drop-down-menus-in-html-css-javascript */
 body {
-    background-color: #000000;
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 #topNav{
@@ -38,7 +39,7 @@ display: none;
     width:100%;
 }
 .inner {
-    width: 50%;
+    width: 90%;
     margin: 0 auto;
     /* IE 8 */
     display: table;
@@ -106,11 +107,12 @@ div.bottom-banner {
 }
 
 div.headings {
-    margin-top: 10px;
+    margin-top: 5px;
+    padding: 5px;
     border-bottom: 1px solid gray;
     font-weight: bold;
-    font-size: 200%;
-    width: 460px;
+    font-size: 150%;
+    width: 100%;
 }
 
 div.title {
@@ -118,8 +120,8 @@ div.title {
     margin-bottom: 10px;
     border-bottom: 1px solid gray;
     font-weight: bold;
-    font-size: 150%;
-    width: 460px;
+    font-size: 130%;
+    width: 100%;
 }
 
 div.title_2 {
@@ -135,8 +137,7 @@ div.desc {
 
 div.bottom-bar {
     border-top: 1px solid gray;
-    margin-bottom: 50px;
-    width: 460px;
+    width: 100%;
     float: center;
 }
 
@@ -146,10 +147,10 @@ table {
 
 
 table.list {
-    width: 460px;
-    border: 1px solid gray;
+    width: 100%;
+    border:0px
 }
 
 table.list td {
-    border: 1px solid gray;
+    border: 0px solid gray;
 }
