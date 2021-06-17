@@ -67,6 +67,27 @@ padding-left:14px;
 padding-right:14px;
 }
 
+div.ui-menu-button {
+  margin: 5px 0px 5px 0px;
+  border: #969696 1px solid;
+  color: white;
+  padding-left:14px;
+  padding-right:14px;
+  text-align: center;
+  text-decoration: none;
+  display: inline-block;
+  font-size: 16px;
+  border-radius: 3px;
+  -moz-border-radius: 3px;
+  box-shadow: 2px 3px 5px #000000;
+}
+
+.button1 {background-color: #4CAF50;} /* Green */
+.button2 {background-color: #008CBA;} /* Blue */
+.button3 {background-color: #f44336;} /* Red */
+.button4 {background-color: #e7e7e7; color: black;} /* Gray */
+.button5 {background-color: #555555;} /* Black */
+
 .menu a:link {
 text-decoration:none;
 color:#000000;
@@ -107,12 +128,18 @@ div.bottom-banner {
 }
 
 div.headings {
+    text-align: center;
     margin-top: 5px;
     padding: 5px;
     border-bottom: 1px solid gray;
     font-weight: bold;
     font-size: 150%;
     width: 100%;
+}
+
+div.container {
+    display: flex;
+    justify-content: center;
 }
 
 div.title {
