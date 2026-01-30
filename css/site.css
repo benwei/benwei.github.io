@@ -154,6 +154,24 @@ a:hover {
     line-height: 1.5;
 }
 
+.project-image {
+    margin-top: 1rem;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+}
+
+.project-image img {
+    width: 100%;
+    height: auto;
+    display: block;
+    transition: transform var(--transition);
+}
+
+.project-card:hover .project-image img {
+    transform: scale(1.02);
+}
+
 /* Content blocks */
 .content-block {
     background: var(--color-surface);
