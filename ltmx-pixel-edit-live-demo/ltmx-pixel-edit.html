@@ -1,0 +1,2065 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Light Matrix Pixel Editor v1.0</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: monospace;
+      background: #1a1a1a;
+      color: #e0e0e0;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      padding: 16px;
+      gap: 12px;
+      min-height: 100vh;
+    }
+
+    /* ── Toolbar ── */
+    #toolbar {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 6px;
+      padding: 6px 10px;
+    }
+
+    /* ── Load progress bar ── */
+    #load-progress-wrap {
+      width: 100%;
+      height: 3px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+      display: none;
+      margin: 4px 0 0;
+    }
+    #load-progress-wrap.active { display: block; }
+    #load-progress-bar {
+      height: 100%;
+      width: 0%;
+      background: #4da;
+      border-radius: 2px;
+    }
+    @keyframes load-indeterminate {
+      0%   { transform: translateX(-120%) scaleX(0.6); }
+      100% { transform: translateX(300%)  scaleX(0.6); }
+    }
+    #load-progress-wrap.indeterminate #load-progress-bar {
+      width: 40%;
+      animation: load-indeterminate 0.6s infinite ease-in-out;
+    }
+
+    #toolbar h1 {
+      font-size: 12px;
+      font-weight: bold;
+      color: #888;
+      margin-right: 6px;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+    }
+
+    .toolbar-sep {
+      width: 1px;
+      height: 22px;
+      background: #444;
+      margin: 0 2px;
+    }
+
+    /* ── Icon buttons (toolbar) ── */
+    .btn-icon {
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #3a3a3a;
+      color: #ccc;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      padding: 0;
+      font-family: monospace;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .btn-icon svg { width: 15px; height: 15px; display: block; }
+    .btn-icon:hover { background: #505050; border-color: #888; color: #fff; }
+    .btn-icon:active { background: #222; }
+
+    .btn-icon.btn-export { border-color: #4a9; color: #4da; }
+    .btn-icon.btn-export:hover { background: #1a3a32; border-color: #4da; }
+
+    .btn-icon.btn-clear { border-color: #a55; color: #d88; }
+    .btn-icon.btn-clear:hover { background: #3a1a1a; border-color: #d88; }
+
+    .btn-icon.btn-hexstr { border-color: #88a; color: #aac; }
+    .btn-icon.btn-hexstr:hover { background: #1a1a3a; border-color: #aac; }
+
+    .btn-icon.btn-load { border-color: #a8a; color: #cac; }
+    .btn-icon.btn-load:hover { background: #2a1a2a; border-color: #cac; }
+
+    .btn-icon.btn-copy { border-color: #aa8; color: #cca; }
+    .btn-icon.btn-copy:hover { background: #2a2a1a; border-color: #cca; }
+
+    .btn-icon.btn-paste { border-color: #8aa; color: #acc; }
+    .btn-icon.btn-paste:hover { background: #1a2a2a; border-color: #acc; }
+
+    .btn-icon.btn-save { border-color: #9a7; color: #bc9; }
+    .btn-icon.btn-save:hover { background: #1a2a18; border-color: #bc9; }
+
+    .btn-icon.btn-loadpng { border-color: #a6f; color: #c8f; }
+    .btn-icon.btn-loadpng:hover { background: #1e0e30; border-color: #c8f; }
+
+    .btn-icon.btn-savepng { border-color: #6af; color: #8cf; }
+    .btn-icon.btn-savepng:hover { background: #0e1e30; border-color: #8cf; }
+
+    .btn-icon.btn-detect { border-color: #f90; color: #fb6; }
+    .btn-icon.btn-detect:hover { background: #2a1800; border-color: #fb6; }
+
+    /* ── Custom tooltips ── */
+    [data-tip] {
+      position: relative;
+    }
+
+    [data-tip]::after {
+      content: attr(data-tip);
+      position: absolute;
+      top: calc(100% + 7px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: #111;
+      color: #ddd;
+      font-size: 10px;
+      font-family: monospace;
+      white-space: nowrap;
+      padding: 4px 8px;
+      border-radius: 3px;
+      border: 1px solid #555;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s;
+      z-index: 200;
+    }
+
+    [data-tip]::before {
+      content: '';
+      position: absolute;
+      top: calc(100% + 2px);
+      left: 50%;
+      transform: translateX(-50%);
+      border: 4px solid transparent;
+      border-bottom-color: #555;
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity 0.12s;
+      z-index: 200;
+    }
+
+    [data-tip]:hover::after,
+    [data-tip]:hover::before { opacity: 1; }
+
+    /* ── Auto-sync checkbox ── */
+    #auto-sync-label {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 11px;
+      color: #888;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    #auto-sync-label:hover { color: #bbb; }
+    #auto-sync { accent-color: #4da; cursor: pointer; }
+
+    /* ── Small utility button (clear-log) ── */
+    .btn-sm {
+      padding: 3px 10px;
+      border: 1px solid #555;
+      border-radius: 4px;
+      background: #3a3a3a;
+      color: #aaa;
+      font-family: monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+    .btn-sm:hover { background: #505050; border-color: #888; }
+
+    /* ── Tool frames area ── */
+    #tools-area {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .tool-frame {
+      border: 1px solid #444;
+      border-radius: 5px;
+      background: #222;
+      padding: 5px 10px 7px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .tool-frame legend {
+      font-size: 10px;
+      color: #666;
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+      padding: 0 4px;
+    }
+
+    .frame-sep {
+      width: 1px;
+      height: 20px;
+      background: #444;
+      margin: 0 2px;
+    }
+
+    .frame-label {
+      font-size: 10px;
+      color: #666;
+      white-space: nowrap;
+    }
+
+    /* ── Draw tool buttons ── */
+    .tool-btn {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: 1px solid #444;
+      border-radius: 4px;
+      background: #2a2a2a;
+      color: #aaa;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+      padding: 0;
+    }
+
+    .tool-btn svg { width: 14px; height: 14px; display: block; }
+    .tool-btn span { font-family: monospace; font-size: 13px; font-weight: bold; }
+    .tool-btn:hover { background: #3a3a3a; color: #ddd; border-color: #666; }
+    .tool-btn.active { background: #1a3a2a; border-color: #4da; color: #4da; }
+    .tool-btn.active svg { stroke: #4da; }
+
+    /* ── Solid fill label ── */
+    .shape-fill-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #888;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .shape-fill-label:hover { color: #bbb; }
+    #shape-fill { accent-color: #f90; cursor: pointer; }
+
+    /* ── Hide native number spinners (prevent overlap) ── */
+    input[type="number"]::-webkit-inner-spin-button,
+    input[type="number"]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+    input[type="number"] { -moz-appearance: textfield; appearance: textfield; }
+
+    /* ── Mosaic block size input ── */
+    #mosaic-size {
+      width: calc(3ch + 26px);
+      padding: 3px 4px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+    #mosaic-size:focus { outline: none; border-color: #f90; }
+
+    /* ── Text frame controls ── */
+    #font-name-select {
+      padding: 3px 4px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 11px;
+      max-width: 110px;
+    }
+    #font-name-select:focus { outline: none; border-color: #4da; }
+
+    #font-size-input {
+      width: calc(5ch + 26px);
+      padding: 3px 4px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+    #font-size-input:focus { outline: none; border-color: #4da; }
+
+    .aa-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #888;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .aa-label:hover { color: #bbb; }
+    #text-aa { accent-color: #4da; cursor: pointer; }
+
+    #text-opacity { accent-color: #4da; cursor: pointer; width: 70px; }
+    #text-opacity-val { min-width: 30px; font-size: 10px; color: #aaa; }
+
+    /* ── Load PNG dialog ── */
+    #loadpng-backdrop {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 900;
+    }
+    #loadpng-backdrop.open { display: block; }
+
+    #loadpng-dialog {
+      display: none;
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #222;
+      border: 1px solid #666;
+      border-radius: 8px;
+      padding: 14px 16px 12px;
+      z-index: 901;
+      min-width: 300px;
+      box-shadow: 0 10px 40px rgba(0,0,0,0.7);
+      font-family: monospace;
+    }
+    #loadpng-dialog.open { display: block; }
+
+    .loadpng-title {
+      font-size: 11px;
+      font-weight: bold;
+      color: #c8f;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .loadpng-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 9px;
+    }
+
+    .loadpng-row-label {
+      font-size: 10px;
+      color: #777;
+      white-space: nowrap;
+      min-width: 100px;
+    }
+
+    #loadpng-filename-display {
+      flex: 1;
+      font-size: 10px;
+      color: #999;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      min-width: 0;
+      padding: 3px 5px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+    }
+
+    #loadpng-open-btn {
+      padding: 3px 10px;
+      background: #2a1e3a;
+      border: 1px solid #a6f;
+      border-radius: 4px;
+      color: #c8f;
+      font-family: monospace;
+      font-size: 11px;
+      cursor: pointer;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+    #loadpng-open-btn:hover { background: #1e0e30; border-color: #c8f; }
+
+    #loadpng-maxpx {
+      width: calc(4ch + 26px);
+      padding: 3px 4px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+    #loadpng-maxpx:focus { outline: none; border-color: #c8f; }
+
+    .loadpng-range-hint {
+      font-size: 10px;
+      color: #555;
+    }
+
+    .loadpng-check-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 10px;
+      color: #888;
+      cursor: pointer;
+      user-select: none;
+    }
+    .loadpng-check-label:hover { color: #bbb; }
+    #loadpng-fit-ratio { accent-color: #c8f; cursor: pointer; }
+
+    #loadpng-prog-wrap {
+      width: 100%;
+      height: 3px;
+      background: #333;
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 10px;
+      display: none;
+    }
+    #loadpng-prog-wrap.active { display: block; }
+    #loadpng-prog-bar {
+      height: 100%;
+      width: 0%;
+      background: #c8f;
+      border-radius: 2px;
+      transition: width 0.1s;
+    }
+    @keyframes loadpng-indeterminate {
+      0%   { transform: translateX(-120%) scaleX(0.6); }
+      100% { transform: translateX(300%)  scaleX(0.6); }
+    }
+    #loadpng-prog-wrap.indeterminate #loadpng-prog-bar {
+      width: 40%;
+      animation: loadpng-indeterminate 0.6s infinite ease-in-out;
+    }
+
+    .loadpng-buttons {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+      margin-top: 14px;
+    }
+
+    .loadpng-btn-ok, .loadpng-btn-cancel {
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 5px;
+      border: 1px solid;
+      cursor: pointer;
+      padding: 0;
+      background: transparent;
+    }
+    .loadpng-btn-ok { border-color: #4da; color: #4da; }
+    .loadpng-btn-ok:hover { background: #1a3a2a; }
+    .loadpng-btn-ok:disabled { opacity: 0.4; cursor: default; }
+    .loadpng-btn-cancel { border-color: #a55; color: #d88; }
+    .loadpng-btn-cancel:hover { background: #3a1a1a; }
+    .loadpng-btn-cancel:disabled { opacity: 0.4; cursor: default; }
+    .loadpng-btn-ok svg, .loadpng-btn-cancel svg { width: 15px; height: 15px; display: block; }
+
+    /* ── Log output ── */
+    #log-area {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #log-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #log-header label {
+      font-size: 11px;
+      color: #888;
+    }
+
+    #log-whitelist-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: #666;
+    }
+
+    #log-whitelist {
+      width: 300px;
+      padding: 3px 6px;
+      background: #1a1a1a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 11px;
+    }
+    #log-whitelist:focus { outline: none; border-color: #666; }
+
+    #log-output {
+      width: 560px;
+      height: 100px;
+      background: #111;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #f90;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+
+    /* ── Main workspace ── */
+    #workspace {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+
+    /* ── Pixel canvas ── */
+    #canvas-wrap {
+      position: relative;
+      border: 1px solid #555;
+      line-height: 0;
+      cursor: crosshair;
+      overflow: auto;
+      max-width: 70vw;
+      max-height: 72vh;
+    }
+
+    #mosaic-overlay {
+      position: absolute;
+      pointer-events: none;
+      border: 2px dashed #f90;
+      background: rgba(255, 153, 0, 0.12);
+      display: none;
+      box-sizing: border-box;
+    }
+
+    /* ── Text overlay ── */
+    #text-overlay {
+      position: absolute;
+      display: none;
+      flex-direction: column;
+      z-index: 10;
+    }
+
+    #text-drag-handle {
+      background: rgba(77, 218, 160, 0.18);
+      border: 1px solid #4da;
+      border-bottom: none;
+      padding: 1px 6px;
+      cursor: move;
+      font-size: 9px;
+      color: #4da;
+      user-select: none;
+      font-family: monospace;
+      letter-spacing: 0.06em;
+      white-space: nowrap;
+    }
+
+    #text-input-field {
+      background: rgba(0, 0, 0, 0.25);
+      border: 1.5px dashed #4da;
+      color: transparent;
+      caret-color: #4da;
+      outline: none;
+      padding: 1px 3px;
+      font-size: 9px;
+      font-family: monospace;
+      box-sizing: border-box;
+    }
+
+    #pixel-canvas {
+      display: grid;
+      /* columns/rows/size set by JS applyLayout() */
+    }
+
+    .pixel {
+      /* width/height set by JS */
+      background: #ffffff;
+      border: none;
+      outline: none;
+      box-shadow: inset 0 0 0 0.5px rgba(0,0,0,0.15);
+    }
+
+    #pixel-canvas.no-grid .pixel { box-shadow: none; }
+
+    /* ── Canvas frame controls ── */
+    #canvas-cols, #canvas-rows {
+      width: calc(3ch + 10px);
+      cursor: text;
+      padding: 3px 4px;
+      background: #2a2a2a;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #ccc;
+      font-family: monospace;
+      font-size: 11px;
+      text-align: center;
+    }
+    #canvas-cols:focus, #canvas-rows:focus { outline: none; border-color: #4da; }
+
+    #zoom-range { accent-color: #4da; cursor: pointer; width: 76px; }
+    #zoom-label { min-width: 36px; font-size: 10px; color: #aaa; }
+
+    .frame-check-label {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      font-size: 10px;
+      color: #888;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+    .frame-check-label:hover { color: #bbb; }
+    .frame-check-label input { accent-color: #4da; cursor: pointer; }
+
+    /* ── Color panel ── */
+    #color-panel {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .color-slot {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+      font-size: 11px;
+      color: #aaa;
+    }
+
+    .color-slot label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      cursor: pointer;
+    }
+
+    .color-slot input[type="color"] {
+      width: 48px;
+      height: 48px;
+      border: 2px solid #555;
+      border-radius: 4px;
+      cursor: pointer;
+      padding: 2px;
+      background: #2a2a2a;
+    }
+    .color-slot input[type="color"]:hover { border-color: #888; }
+
+    .slot-hint {
+      font-size: 10px;
+      color: #666;
+    }
+
+    #fg-slot input { border-color: #4a9; }
+    #bg-slot input { border-color: #77a; }
+
+    /* ── Hex output ── */
+    #output-area {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    #output-area label {
+      font-size: 11px;
+      color: #888;
+    }
+
+    #hex-output {
+      width: 560px;
+      height: 120px;
+      background: #111;
+      border: 1px solid #444;
+      border-radius: 4px;
+      color: #4da;
+      font-family: monospace;
+      font-size: 12px;
+      padding: 8px;
+      resize: vertical;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toolbar -->
+  <div id="toolbar">
+    <button class="btn-icon btn-export" id="btn-export" data-tip="Export formatted hex">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 2v9M5 8l3 3 3-3M2 14h12"/>
+      </svg>
+    </button>
+
+    <button class="btn-icon btn-hexstr" id="btn-hexstr" data-tip="Compact hex string">#</button>
+
+    <button class="btn-icon btn-load" id="btn-load" data-tip="Load from .hex file">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M2 6.5h12v7H2z"/>
+        <path d="M2 6.5L3.5 4h4l1.5 2.5"/>
+      </svg>
+    </button>
+
+    <button class="btn-icon btn-loadpng" id="btn-loadpng" data-tip="Load image (PNG/JPG/…) — scaled to canvas">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="12" height="10" rx="1"/>
+        <path d="M8 12V7M6 9l2-2 2 2"/>
+      </svg>
+    </button>
+
+    <div class="toolbar-sep"></div>
+
+    <button class="btn-icon btn-copy" id="btn-copy" data-tip="Copy hex to clipboard">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="5" y="5" width="9" height="9" rx="1"/>
+        <path d="M5 4V3a1 1 0 011-1h5l2 2v6a1 1 0 01-1 1H11"/>
+      </svg>
+    </button>
+
+    <button class="btn-icon btn-paste" id="btn-paste" data-tip="Paste hex from clipboard">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="4" width="12" height="11" rx="1"/>
+        <path d="M5 4V2.5c0-.3.2-.5.5-.5h5c.3 0 .5.2.5.5V4"/>
+      </svg>
+    </button>
+
+    <button class="btn-icon btn-save" id="btn-save" data-tip="Save as pixels.hex">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="2" width="12" height="12" rx="1"/>
+        <path d="M5 2v5h6V2M10 3v3"/>
+        <rect x="4" y="10" width="8" height="3" rx="0.5"/>
+      </svg>
+    </button>
+
+    <button class="btn-icon btn-savepng" id="btn-savepng" data-tip="Save as PNG image">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="2" y="3" width="12" height="10" rx="1"/>
+        <circle cx="11" cy="7" r="1.5"/>
+        <path d="M2 11l3.5-3.5 3 3 2-2 3.5 3.5"/>
+      </svg>
+    </button>
+
+    <div class="toolbar-sep"></div>
+
+    <button class="btn-icon btn-detect" id="btn-detect" data-tip="Detect mosaic blocks">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6.5" cy="6.5" r="4"/>
+        <path d="M10 10l4 4"/>
+      </svg>
+    </button>
+
+    <button class="btn-icon btn-clear" id="btn-clear" data-tip="Clear canvas to white">
+      <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M3 5h10M6 5V4a.5.5 0 01.5-.5h3a.5.5 0 01.5.5v1M4.5 5l1 8h5l1-8M7 8v3M9 8v3"/>
+      </svg>
+    </button>
+
+    <div class="toolbar-sep"></div>
+
+    <label id="auto-sync-label">
+      <input type="checkbox" id="auto-sync" />
+      Auto sync
+    </label>
+  </div>
+  <input type="file" id="file-input"     accept=".txt,.hex"  style="display:none" />
+  <input type="file" id="file-input-png" accept="image/*"    style="display:none" />
+
+  <!-- Load progress bar -->
+  <div id="load-progress-wrap">
+    <div id="load-progress-bar"></div>
+  </div>
+
+  <!-- Tool frames -->
+  <div id="tools-area">
+
+    <!-- Draw -->
+    <fieldset class="tool-frame" id="frame-draw">
+      <legend>Draw</legend>
+
+      <button class="tool-btn active" data-tool="pencil" data-tip="Pencil — freehand">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M9.5 2.5l2 2L4 12H2v-2z"/>
+          <path d="M7.5 4.5l2 2"/>
+        </svg>
+      </button>
+
+      <button class="tool-btn" data-tool="line" data-tip="Line — drag">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round">
+          <line x1="2" y1="12" x2="12" y2="2"/>
+        </svg>
+      </button>
+
+      <button class="tool-btn" data-tool="rect" data-tip="Rectangle — drag">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+          <rect x="2" y="3" width="10" height="8" rx="0.5"/>
+        </svg>
+      </button>
+
+      <button class="tool-btn" data-tool="circle" data-tip="Circle — drag radius">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4">
+          <circle cx="7" cy="7" r="5"/>
+        </svg>
+      </button>
+
+      <button class="tool-btn" data-tool="triangle" data-tip="Triangle — 3 clicks">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round">
+          <path d="M7 2L13 12H1z"/>
+        </svg>
+      </button>
+
+      <button class="tool-btn" data-tool="fill" data-tip="Flood Fill">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 9l5-7 2 2-5 7z"/>
+          <path d="M7 4l3 3-2 2"/>
+          <circle cx="11" cy="12" r="1.5"/>
+        </svg>
+      </button>
+
+      <div class="frame-sep"></div>
+
+      <label class="shape-fill-label" title="Toggle solid/outline fill">
+        <input type="checkbox" id="shape-fill" />
+        Solid
+      </label>
+    </fieldset>
+
+    <!-- Mosaic -->
+    <fieldset class="tool-frame" id="frame-mosaic">
+      <legend>Mosaic</legend>
+
+      <button class="tool-btn" data-tool="mosaic" data-tip="Mosaic — click 2 corners">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.3">
+          <rect x="1.5" y="1.5" width="11" height="11" rx="0.5"/>
+          <line x1="7" y1="1.5" x2="7" y2="12.5"/>
+          <line x1="1.5" y1="7" x2="12.5" y2="7"/>
+        </svg>
+      </button>
+
+      <div class="frame-sep"></div>
+      <span class="frame-label">Block:</span>
+      <input type="number" id="mosaic-size" value="2" min="2" max="5" title="Block size (2–5)" />
+    </fieldset>
+
+    <!-- Text -->
+    <fieldset class="tool-frame" id="frame-text">
+      <legend>Text</legend>
+
+      <button class="tool-btn" data-tool="text" data-tip="Text — click to place">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 3h8M7 3v8"/>
+          <line x1="5" y1="11" x2="9" y2="11"/>
+        </svg>
+      </button>
+
+      <div class="frame-sep"></div>
+      <span class="frame-label">Font:</span>
+      <select id="font-name-select" title="Font family">
+        <option>Arial</option>
+        <option>Helvetica</option>
+        <option>Verdana</option>
+        <option>Tahoma</option>
+        <option>Trebuchet MS</option>
+        <option>Georgia</option>
+        <option>Times New Roman</option>
+        <option>Courier New</option>
+        <option>Lucida Console</option>
+        <option>Impact</option>
+        <option>Comic Sans MS</option>
+        <option>Palatino</option>
+      </select>
+
+      <span class="frame-label">Size:</span>
+      <input type="number" id="font-size-input" value="8" min="4" max="16" title="Font size (px)" />
+
+      <div class="frame-sep"></div>
+
+      <label class="aa-label" title="Toggle anti-aliasing">
+        <input type="checkbox" id="text-aa" />
+        AA
+      </label>
+
+      <div class="frame-sep"></div>
+      <span class="frame-label">Opacity:</span>
+      <input type="range" id="text-opacity" min="1" max="100" value="100" title="Text opacity" />
+      <span id="text-opacity-val">100%</span>
+    </fieldset>
+
+    <!-- Canvas -->
+    <fieldset class="tool-frame" id="frame-canvas">
+      <legend>Canvas</legend>
+      <span class="frame-label">W:</span>
+      <input type="text" inputmode="numeric" id="canvas-cols" value="10" data-tip="Canvas width (1–200)" />
+      <label class="frame-check-label" data-tip="Lock aspect ratio W:H">
+        <input type="checkbox" id="ratio-lock" />
+        <svg viewBox="0 0 10 12" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" width="10" height="12">
+          <rect x="1.5" y="5" width="7" height="6" rx="1"/>
+          <path d="M3 5V3.5a2 2 0 014 0V5"/>
+        </svg>
+      </label>
+      <input type="text" inputmode="numeric" id="canvas-rows" value="20" data-tip="Canvas height (1–200)" />
+      <button class="tool-btn" id="btn-resize" data-tip="Apply new canvas size">
+        <svg viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M2 9v3h3M12 5V2H9M5 2H2v3M9 12h3V9"/>
+        </svg>
+      </button>
+      <div class="frame-sep"></div>
+      <span class="frame-label">Zoom:</span>
+      <input type="range" id="zoom-range" min="4" max="64" step="2" value="20" data-tip="Zoom cell size" />
+      <span id="zoom-label">100%</span>
+      <div class="frame-sep"></div>
+      <label class="frame-check-label">
+        <input type="checkbox" id="show-grid" checked />
+        Grid
+      </label>
+      <div class="frame-sep"></div>
+      <label class="frame-check-label">
+        <input type="checkbox" id="resize-clear" checked />
+        Clear
+      </label>
+    </fieldset>
+
+  </div>
+
+  <!-- Workspace: canvas + color panel -->
+  <div id="workspace">
+
+    <div id="canvas-wrap">
+      <div id="pixel-canvas"></div>
+      <div id="mosaic-overlay"></div>
+      <div id="text-overlay">
+        <div id="text-drag-handle">&#x283F; Text</div>
+        <input type="text" id="text-input-field" autocomplete="off" spellcheck="false" />
+      </div>
+    </div>
+
+    <div id="color-panel">
+      <div class="color-slot" id="fg-slot">
+        <label>
+          <input type="color" id="fg-color" value="#000000" />
+          Foreground
+        </label>
+        <span class="slot-hint">Left-click pixel to paint</span>
+      </div>
+
+      <div class="color-slot" id="bg-slot">
+        <label>
+          <input type="color" id="bg-color" value="#ffffff" />
+          Background
+        </label>
+        <span class="slot-hint">Right-click pixel to paint</span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Hex output -->
+  <div id="output-area">
+    <label>Hex color data (R G B per pixel, row by row):</label>
+    <textarea id="hex-output" readonly placeholder="Press Export to generate hex data&hellip;"></textarea>
+  </div>
+
+  <!-- Log output -->
+  <div id="log-area">
+    <div id="log-header">
+      <label>Mosaic region log (x1, y1, x2, y2):</label>
+      <button class="btn-sm" id="btn-clear-log">Clear Log</button>
+    </div>
+    <div id="log-whitelist-row">
+      <span>Ignore colors:</span>
+      <input type="text" id="log-whitelist" value="#FFFFFF,#000000" />
+    </div>
+    <textarea id="log-output" readonly placeholder="Press Detect to find uniform mosaic blocks&hellip;"></textarea>
+  </div>
+
+  <!-- ── Load PNG dialog ── -->
+  <div id="loadpng-backdrop"></div>
+  <div id="loadpng-dialog" role="dialog" aria-modal="true" aria-label="Load Image">
+    <div class="loadpng-title">Load Image</div>
+
+    <!-- Filename row -->
+    <div class="loadpng-row">
+      <span class="loadpng-row-label">File</span>
+      <span id="loadpng-filename-display">No file selected</span>
+      <button id="loadpng-open-btn">Open…</button>
+    </div>
+
+    <!-- Long side max pixel -->
+    <div class="loadpng-row">
+      <span class="loadpng-row-label">A. Long side px</span>
+      <input type="number" id="loadpng-maxpx" min="16" max="256" value="64" />
+      <span class="loadpng-range-hint">16 – 256</span>
+    </div>
+
+    <!-- Fit ratio checkbox -->
+    <div class="loadpng-row">
+      <label class="loadpng-check-label">
+        <input type="checkbox" id="loadpng-fit-ratio" />
+        B. Resize canvas grid to fit image ratio
+      </label>
+    </div>
+
+    <!-- Progress bar (shown after OK) -->
+    <div id="loadpng-prog-wrap">
+      <div id="loadpng-prog-bar"></div>
+    </div>
+
+    <!-- Action buttons -->
+    <div class="loadpng-buttons">
+      <button class="loadpng-btn-cancel" id="loadpng-cancel-btn" title="Cancel">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+          <line x1="4" y1="4" x2="12" y2="12"/>
+          <line x1="12" y1="4" x2="4" y2="12"/>
+        </svg>
+      </button>
+      <button class="loadpng-btn-ok" id="loadpng-ok-btn" title="Load">
+        <svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="3,9 7,13 13,3"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let COLS  = 10;
+    let ROWS  = 20;
+    let TOTAL = COLS * ROWS;
+    let cellSize = 20;
+
+    // pixel state: array of "#rrggbb" strings
+    const pixels = new Array(TOTAL).fill('#ffffff');
+
+    const canvasEl  = document.getElementById('pixel-canvas');
+    const fgInput   = document.getElementById('fg-color');
+    const bgInput   = document.getElementById('bg-color');
+    const hexOutput = document.getElementById('hex-output');
+
+    // ── Build grid ──────────────────────────────────────────
+    const cells = [];
+
+    for (let i = 0; i < TOTAL; i++) {
+      const div = document.createElement('div');
+      div.className = 'pixel';
+      canvasEl.appendChild(div);
+      cells.push(div);
+    }
+    applyLayout();  // set initial grid dimensions
+
+    const autoSync  = document.getElementById('auto-sync');
+    const shapeFill = document.getElementById('shape-fill');
+
+    // ── Layout helpers ───────────────────────────────────────
+    function applyLayout() {
+      canvasEl.style.gridTemplateColumns = `repeat(${COLS}, ${cellSize}px)`;
+      canvasEl.style.gridTemplateRows    = `repeat(${ROWS}, ${cellSize}px)`;
+      canvasEl.style.width  = `${COLS * cellSize}px`;
+      canvasEl.style.height = `${ROWS * cellSize}px`;
+      cells.forEach(c => {
+        c.style.width  = cellSize + 'px';
+        c.style.height = cellSize + 'px';
+      });
+    }
+
+    function rebuildCanvas() {
+      const newCols = Math.max(1, Math.min(512, parseInt(document.getElementById('canvas-cols').value, 10) || COLS));
+      const newRows = Math.max(1, Math.min(512, parseInt(document.getElementById('canvas-rows').value, 10) || ROWS));
+      const doClear = document.getElementById('resize-clear').checked;
+      const oldPixels = doClear ? null : pixels.slice();
+      const oldCols   = COLS;
+      COLS  = newCols;
+      ROWS  = newRows;
+      TOTAL = COLS * ROWS;
+      document.getElementById('canvas-cols').value = COLS;
+      document.getElementById('canvas-rows').value = ROWS;
+      pixels.length = 0;
+      for (let row = 0; row < ROWS; row++) {
+        for (let col = 0; col < COLS; col++) {
+          if (!doClear && row * oldCols + col < oldPixels.length && col < oldCols) {
+            pixels.push(oldPixels[row * oldCols + col]);
+          } else {
+            pixels.push('#ffffff');
+          }
+        }
+      }
+      canvasEl.innerHTML = '';
+      cells.length = 0;
+      for (let i = 0; i < TOTAL; i++) {
+        const div = document.createElement('div');
+        div.className = 'pixel';
+        canvasEl.appendChild(div);
+        cells.push(div);
+      }
+      applyLayout();
+      for (let i = 0; i < TOTAL; i++) cells[i].style.background = pixels[i];
+      triPts = [];
+      previewSnapshot = null;
+      mosaicClickCount  = 0;
+      mosaicRegionStart = null;
+      hideMosaicOverlay();
+      textOrigin = null;
+      textSnapshot = null;
+      hideTextOverlay();
+      hexOutput.value = '';
+    }
+
+    function setZoom(newSize) {
+      cellSize = Math.max(4, Math.min(64, newSize));
+      document.getElementById('zoom-range').value = cellSize;
+      document.getElementById('zoom-label').textContent = Math.round(cellSize / 20 * 100) + '%';
+      applyLayout();
+      if (textOrigin) {
+        const ov = document.getElementById('text-overlay');
+        ov.style.left = (textOrigin.x * cellSize) + 'px';
+        ov.style.top  = (textOrigin.y * cellSize) + 'px';
+        document.getElementById('text-input-field').style.width = ((COLS - textOrigin.x) * cellSize) + 'px';
+      }
+    }
+
+    function applyColor(index, color, silent = false) {
+      pixels[index] = color;
+      cells[index].style.background = color;
+      if (!silent && autoSync.checked) {
+        hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+      }
+    }
+
+    // ── Tool selection ────────────────────────────────────────
+    let currentTool = 'pencil';
+
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        currentTool = btn.dataset.tool;
+        document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        triPts = [];
+        previewSnapshot = null;
+        mosaicClickCount  = 0;
+        mosaicRegionStart = null;
+        hideMosaicOverlay();
+        if (textOrigin) cancelText();
+      });
+    });
+
+    // ── Pixel coords from mouse event ─────────────────────────
+    function pixelFromEvent(e) {
+      const rect = canvasEl.getBoundingClientRect();
+      const x = Math.floor((e.clientX - rect.left) / cellSize);
+      const y = Math.floor((e.clientY - rect.top) / cellSize);
+      if (x < 0 || x >= COLS || y < 0 || y >= ROWS) return null;
+      return { x, y, idx: y * COLS + x };
+    }
+
+    // ── Preview snapshot ──────────────────────────────────────
+    let previewSnapshot = null;
+
+    function saveSnapshot() {
+      previewSnapshot = [...pixels];
+    }
+
+    function restoreSnapshot() {
+      if (!previewSnapshot) return;
+      for (let i = 0; i < TOTAL; i++) {
+        pixels[i] = previewSnapshot[i];
+        cells[i].style.background = previewSnapshot[i];
+      }
+    }
+
+    // ── Triangle state ────────────────────────────────────────
+    let triPts = [];
+
+    // ── Painting ──────────────────────────────────────────────
+    let painting        = false;
+    let paintButton     = 0;
+    let dragStart       = null;
+    let lastPaintIdx    = -1;
+    let textDragging    = false;
+    let textDragOffsetX = 0;
+    let textDragOffsetY = 0;
+
+    // Mosaic 2-click region state
+    let mosaicClickCount  = 0;
+    let mosaicRegionStart = null;
+
+    canvasEl.addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      const pt = pixelFromEvent(e);
+      if (!pt) return;
+      paintButton = e.button;
+      const color = e.button === 2 ? bgInput.value : fgInput.value;
+
+      if (currentTool === 'pencil') {
+        painting = true;
+        lastPaintIdx = pt.idx;
+        applyColor(pt.idx, color);
+
+      } else if (currentTool === 'fill') {
+        floodFill(pt.idx, color);
+
+      } else if (currentTool === 'text') {
+        if (textOrigin) commitText();
+        textOrigin   = pt;
+        textSnapshot = [...pixels];
+        showTextOverlay(pt.x, pt.y);
+
+      } else if (currentTool === 'mosaic') {
+        if (mosaicClickCount === 0) {
+          mosaicRegionStart = pt;
+          mosaicClickCount  = 1;
+          updateMosaicOverlay(pt.x, pt.y, pt.x, pt.y);
+        } else {
+          applyMosaicRegion(mosaicRegionStart.x, mosaicRegionStart.y, pt.x, pt.y);
+          mosaicClickCount  = 0;
+          mosaicRegionStart = null;
+          hideMosaicOverlay();
+          if (autoSync.checked) hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+        }
+
+      } else if (currentTool === 'triangle') {
+        if (triPts.length === 0) saveSnapshot();
+        restoreSnapshot();
+        triPts.push(pt);
+        if (triPts.length === 2) {
+          plotLine(triPts[0].x, triPts[0].y, triPts[1].x, triPts[1].y, color, true);
+        } else if (triPts.length === 3) {
+          plotTriangleShape(triPts, color, true);
+          triPts = [];
+          previewSnapshot = null;
+          if (autoSync.checked) hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+        }
+
+      } else {
+        // line, rect, circle — drag to draw
+        painting  = true;
+        dragStart = pt;
+        saveSnapshot();
+      }
+    });
+
+    canvasEl.addEventListener('mousemove', (e) => {
+      const pt = pixelFromEvent(e);
+      if (!pt) return;
+      const color = paintButton === 2 ? bgInput.value : fgInput.value;
+
+      if (currentTool === 'pencil' && painting) {
+        if (pt.idx !== lastPaintIdx) {
+          applyColor(pt.idx, color);
+          lastPaintIdx = pt.idx;
+        }
+      } else if (currentTool === 'mosaic' && mosaicClickCount === 1) {
+        updateMosaicOverlay(mosaicRegionStart.x, mosaicRegionStart.y, pt.x, pt.y);
+      } else if (currentTool === 'triangle' && triPts.length > 0) {
+        restoreSnapshot();
+        if (triPts.length === 1) {
+          plotLine(triPts[0].x, triPts[0].y, pt.x, pt.y, color, true);
+        } else if (triPts.length === 2) {
+          plotTriangleShape([triPts[0], triPts[1], pt], color, true);
+        }
+      } else if (painting && dragStart && currentTool !== 'pencil') {
+        restoreSnapshot();
+        drawShape(currentTool, dragStart.x, dragStart.y, pt.x, pt.y, color, true);
+      }
+    });
+
+    document.addEventListener('mouseup', (e) => {
+      if (painting && dragStart && currentTool !== 'pencil') {
+        previewSnapshot = null;
+        if (autoSync.checked) hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+      }
+      painting      = false;
+      dragStart     = null;
+      lastPaintIdx  = -1;
+      textDragging  = false;
+    });
+
+    // Disable context menu inside the canvas
+    canvasEl.addEventListener('contextmenu', (e) => e.preventDefault());
+
+    // ── Shape drawing ─────────────────────────────────────────
+    function plotPixel(x, y, color, silent) {
+      if (x >= 0 && x < COLS && y >= 0 && y < ROWS)
+        applyColor(y * COLS + x, color, silent);
+    }
+
+    function plotLine(x0, y0, x1, y1, color, silent) {
+      let dx = Math.abs(x1 - x0), sx = x0 < x1 ? 1 : -1;
+      let dy = -Math.abs(y1 - y0), sy = y0 < y1 ? 1 : -1;
+      let err = dx + dy;
+      for (;;) {
+        plotPixel(x0, y0, color, silent);
+        if (x0 === x1 && y0 === y1) break;
+        const e2 = 2 * err;
+        if (e2 >= dy) { err += dy; x0 += sx; }
+        if (e2 <= dx) { err += dx; y0 += sy; }
+      }
+    }
+
+    function plotRect(x0, y0, x1, y1, color, silent) {
+      const minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
+      const minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
+      for (let x = minX; x <= maxX; x++) {
+        plotPixel(x, minY, color, silent);
+        plotPixel(x, maxY, color, silent);
+      }
+      for (let y = minY + 1; y < maxY; y++) {
+        plotPixel(minX, y, color, silent);
+        plotPixel(maxX, y, color, silent);
+      }
+    }
+
+    function plotCircle(cx, cy, r, color, silent) {
+      if (r < 0) return;
+      let x = 0, y = r, d = 1 - r;
+      function sym(px, py) { plotPixel(cx + px, cy + py, color, silent); }
+      function oct(px, py) {
+        sym(px, py); sym(-px, py); sym(px, -py); sym(-px, -py);
+        sym(py, px); sym(-py, px); sym(py, -px); sym(-py, -px);
+      }
+      oct(0, r);
+      while (x < y) {
+        if (d < 0) d += 2 * x + 3;
+        else { d += 2 * (x - y) + 5; y--; }
+        x++;
+        oct(x, y);
+      }
+    }
+
+    function plotRectFilled(x0, y0, x1, y1, color, silent) {
+      const minX = Math.min(x0, x1), maxX = Math.max(x0, x1);
+      const minY = Math.min(y0, y1), maxY = Math.max(y0, y1);
+      for (let y = minY; y <= maxY; y++)
+        for (let x = minX; x <= maxX; x++)
+          plotPixel(x, y, color, silent);
+    }
+
+    function plotCircleFilled(cx, cy, r, color, silent) {
+      for (let y = cy - r; y <= cy + r; y++) {
+        const dx = Math.round(Math.sqrt(Math.max(0, r * r - (y - cy) ** 2)));
+        for (let x = cx - dx; x <= cx + dx; x++)
+          plotPixel(x, y, color, silent);
+      }
+    }
+
+    function plotTriangleFilled(pts, color, silent) {
+      const [p0, p1, p2] = [...pts].sort((a, b) => a.y - b.y);
+      function interpX(ya, yb, xa, xb, y) {
+        return ya === yb ? xa : xa + (xb - xa) * (y - ya) / (yb - ya);
+      }
+      for (let y = p0.y; y <= p2.y; y++) {
+        const xa = Math.round(interpX(p0.y, p2.y, p0.x, p2.x, y));
+        const xb = Math.round(y <= p1.y
+          ? interpX(p0.y, p1.y, p0.x, p1.x, y)
+          : interpX(p1.y, p2.y, p1.x, p2.x, y));
+        for (let x = Math.min(xa, xb); x <= Math.max(xa, xb); x++)
+          plotPixel(x, y, color, silent);
+      }
+    }
+
+    function plotTriangleShape(pts, color, silent) {
+      if (shapeFill.checked) {
+        plotTriangleFilled(pts, color, silent);
+      } else {
+        plotLine(pts[0].x, pts[0].y, pts[1].x, pts[1].y, color, silent);
+        plotLine(pts[1].x, pts[1].y, pts[2].x, pts[2].y, color, silent);
+        plotLine(pts[2].x, pts[2].y, pts[0].x, pts[0].y, color, silent);
+      }
+    }
+
+    function drawShape(tool, x0, y0, x1, y1, color, silent) {
+      const r = Math.round(Math.hypot(x1 - x0, y1 - y0));
+      if (tool === 'line') {
+        plotLine(x0, y0, x1, y1, color, silent);
+      } else if (tool === 'rect') {
+        shapeFill.checked ? plotRectFilled(x0, y0, x1, y1, color, silent) : plotRect(x0, y0, x1, y1, color, silent);
+      } else if (tool === 'circle') {
+        shapeFill.checked ? plotCircleFilled(x0, y0, r, color, silent) : plotCircle(x0, y0, r, color, silent);
+      }
+    }
+
+    // ── Mosaic ────────────────────────────────────────────────
+    function mosaicBlockSize() {
+      return Math.max(2, Math.min(5, parseInt(document.getElementById('mosaic-size').value, 10) || 2));
+    }
+
+    function applyMosaicBlock(bx, by, size) {
+      let rSum = 0, gSum = 0, bSum = 0, count = 0;
+      for (let dy = 0; dy < size && by + dy < ROWS; dy++) {
+        for (let dx = 0; dx < size && bx + dx < COLS; dx++) {
+          const hex = pixels[(by + dy) * COLS + (bx + dx)];
+          rSum += parseInt(hex.slice(1, 3), 16);
+          gSum += parseInt(hex.slice(3, 5), 16);
+          bSum += parseInt(hex.slice(5, 7), 16);
+          count++;
+        }
+      }
+      const avg = '#'
+        + Math.round(rSum / count).toString(16).padStart(2, '0')
+        + Math.round(gSum / count).toString(16).padStart(2, '0')
+        + Math.round(bSum / count).toString(16).padStart(2, '0');
+      for (let dy = 0; dy < size && by + dy < ROWS; dy++)
+        for (let dx = 0; dx < size && bx + dx < COLS; dx++)
+          applyColor((by + dy) * COLS + (bx + dx), avg);
+    }
+
+    function applyMosaicRegion(x0, y0, x1, y1) {
+      const size  = mosaicBlockSize();
+      const minX  = Math.min(x0, x1);
+      const minY  = Math.min(y0, y1);
+      const maxX  = Math.max(x0, x1);
+      const maxY  = Math.max(y0, y1);
+      const startBX = Math.floor(minX / size) * size;
+      const startBY = Math.floor(minY / size) * size;
+      for (let by = startBY; by <= maxY; by += size)
+        for (let bx = startBX; bx <= maxX; bx += size)
+          applyMosaicBlock(bx, by, size);
+    }
+
+    function updateMosaicOverlay(x0, y0, x1, y1) {
+      const minX = Math.min(x0, x1);
+      const minY = Math.min(y0, y1);
+      const maxX = Math.max(x0, x1);
+      const maxY = Math.max(y0, y1);
+      const ov = document.getElementById('mosaic-overlay');
+      ov.style.display = 'block';
+      ov.style.left    = (minX * cellSize) + 'px';
+      ov.style.top     = (minY * cellSize) + 'px';
+      ov.style.width   = ((maxX - minX + 1) * cellSize) + 'px';
+      ov.style.height  = ((maxY - minY + 1) * cellSize) + 'px';
+    }
+
+    function hideMosaicOverlay() {
+      document.getElementById('mosaic-overlay').style.display = 'none';
+    }
+
+    // ── Text tool ─────────────────────────────────────────────
+    let textOrigin   = null;   // { x, y } in pixel coords
+    let textSnapshot = null;   // pixels[] copy before text
+
+    function showTextOverlay(px, py) {
+      const overlay = document.getElementById('text-overlay');
+      const input   = document.getElementById('text-input-field');
+      const remainW = (COLS - px) * cellSize;
+      overlay.style.left    = (px * cellSize) + 'px';
+      overlay.style.top     = (py * cellSize) + 'px';
+      overlay.style.display = 'flex';
+      input.style.width     = remainW + 'px';
+      input.value = '';
+      setTimeout(() => input.focus(), 0);
+    }
+
+    function hideTextOverlay() {
+      document.getElementById('text-overlay').style.display = 'none';
+      document.getElementById('text-input-field').value = '';
+    }
+
+    function renderTextToPixels(text, originX, originY, silent) {
+      if (!text) return;
+      const fontSize = Math.max(4, Math.min(16, parseInt(document.getElementById('font-size-input').value, 10) || 8));
+      const fontName = document.getElementById('font-name-select').value;
+      const color    = fgInput.value;
+      const aaOn     = document.getElementById('text-aa').checked;
+      const opacity  = Math.max(0.01, Math.min(1, parseInt(document.getElementById('text-opacity').value, 10) / 100));
+
+      const fgR = parseInt(color.slice(1, 3), 16);
+      const fgG = parseInt(color.slice(3, 5), 16);
+      const fgB = parseInt(color.slice(5, 7), 16);
+
+      // Supersample at SCALE× so thin strokes at small font sizes get full coverage
+      // per pixel cell, avoiding the "half character" problem caused by sub-pixel
+      // alpha values falling below the no-AA threshold at 1:1 resolution.
+      const SCALE  = 4;
+      const SW     = COLS * SCALE;
+      const SH     = ROWS * SCALE;
+      const offscreen = document.createElement('canvas');
+      offscreen.width  = SW;
+      offscreen.height = SH;
+      const ctx = offscreen.getContext('2d');
+      ctx.fillStyle    = color;
+      ctx.font         = `${fontSize * SCALE}px "${fontName}"`;
+      ctx.textBaseline = 'top';
+      ctx.fillText(text, originX * SCALE, originY * SCALE);
+
+      const mask = ctx.getImageData(0, 0, SW, SH).data;
+
+      for (let py = 0; py < ROWS; py++) {
+        for (let px = 0; px < COLS; px++) {
+          // Average alpha over the SCALE×SCALE block that maps to this grid cell
+          let total = 0;
+          for (let sy = 0; sy < SCALE; sy++)
+            for (let sx = 0; sx < SCALE; sx++)
+              total += mask[((py * SCALE + sy) * SW + (px * SCALE + sx)) * 4 + 3];
+          const avgAlpha = total / (SCALE * SCALE); // 0–255
+
+          if (avgAlpha === 0) continue; // no coverage — leave pixel untouched
+
+          const i     = py * COLS + px;
+          const bgHex = pixels[i];
+          const bgR   = parseInt(bgHex.slice(1, 3), 16);
+          const bgG   = parseInt(bgHex.slice(3, 5), 16);
+          const bgB   = parseInt(bgHex.slice(5, 7), 16);
+
+          let r, g, b;
+          if (aaOn) {
+            // Smooth blend: coverage fraction × user opacity
+            const t = (avgAlpha / 255) * opacity;
+            r = Math.round(fgR * t + bgR * (1 - t));
+            g = Math.round(fgG * t + bgG * (1 - t));
+            b = Math.round(fgB * t + bgB * (1 - t));
+          } else {
+            // Snap: ≥ 50% coverage → pure fg (× opacity), else keep bg
+            if (avgAlpha < 128) continue;
+            r = Math.round(fgR * opacity + bgR * (1 - opacity));
+            g = Math.round(fgG * opacity + bgG * (1 - opacity));
+            b = Math.round(fgB * opacity + bgB * (1 - opacity));
+          }
+
+          applyColor(i, '#' + r.toString(16).padStart(2, '0')
+                           + g.toString(16).padStart(2, '0')
+                           + b.toString(16).padStart(2, '0'), silent);
+        }
+      }
+    }
+
+    function restoreTextSnapshot() {
+      if (!textSnapshot) return;
+      for (let i = 0; i < TOTAL; i++) {
+        pixels[i] = textSnapshot[i];
+        cells[i].style.background = textSnapshot[i];
+      }
+    }
+
+    function commitText() {
+      restoreTextSnapshot();
+      const text = document.getElementById('text-input-field').value;
+      if (textOrigin) renderTextToPixels(text, textOrigin.x, textOrigin.y, false);
+      textOrigin   = null;
+      textSnapshot = null;
+      hideTextOverlay();
+      if (autoSync.checked) hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+    }
+
+    function cancelText() {
+      restoreTextSnapshot();
+      textOrigin   = null;
+      textSnapshot = null;
+      hideTextOverlay();
+    }
+
+    // Live preview while typing
+    document.getElementById('text-input-field').addEventListener('input', () => {
+      if (!textOrigin || !textSnapshot) return;
+      restoreTextSnapshot();
+      renderTextToPixels(document.getElementById('text-input-field').value,
+                         textOrigin.x, textOrigin.y, true);
+    });
+
+    // Enter = commit, Escape = cancel
+    document.getElementById('text-input-field').addEventListener('keydown', (e) => {
+      if (e.key === 'Enter')  { e.preventDefault(); commitText(); }
+      else if (e.key === 'Escape') { e.preventDefault(); cancelText(); }
+    });
+
+    // Drag handle — move overlay + re-render
+    document.getElementById('text-drag-handle').addEventListener('mousedown', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (!textOrigin) return;
+      textDragging = true;
+      const overlayRect = document.getElementById('text-overlay').getBoundingClientRect();
+      textDragOffsetX = e.clientX - overlayRect.left;
+      textDragOffsetY = e.clientY - overlayRect.top;
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!textDragging || !textOrigin) return;
+      const wrapEl   = document.getElementById('canvas-wrap');
+      const wrapRect = wrapEl.getBoundingClientRect();
+      let newLeft = e.clientX - wrapRect.left + wrapEl.scrollLeft - textDragOffsetX;
+      let newTop  = e.clientY - wrapRect.top  + wrapEl.scrollTop  - textDragOffsetY;
+      // Snap to pixel grid
+      newLeft = Math.round(newLeft / cellSize) * cellSize;
+      newTop  = Math.round(newTop  / cellSize) * cellSize;
+      // Clamp inside canvas
+      newLeft = Math.max(0, Math.min((COLS - 1) * cellSize, newLeft));
+      newTop  = Math.max(0, Math.min((ROWS - 1) * cellSize, newTop));
+      const overlay = document.getElementById('text-overlay');
+      overlay.style.left = newLeft + 'px';
+      overlay.style.top  = newTop  + 'px';
+      const nx = newLeft / cellSize, ny = newTop / cellSize;
+      textOrigin = { x: nx, y: ny, idx: ny * COLS + nx };
+      document.getElementById('text-input-field').style.width = (COLS - nx) * cellSize + 'px';
+      if (textSnapshot) {
+        restoreTextSnapshot();
+        renderTextToPixels(document.getElementById('text-input-field').value, nx, ny, true);
+      }
+    });
+
+    // Opacity slider — live preview
+    document.getElementById('text-opacity').addEventListener('input', (e) => {
+      document.getElementById('text-opacity-val').textContent = e.target.value + '%';
+      if (textOrigin && textSnapshot) {
+        restoreTextSnapshot();
+        renderTextToPixels(document.getElementById('text-input-field').value,
+                           textOrigin.x, textOrigin.y, true);
+      }
+    });
+
+    // ── Detect mosaic areas ───────────────────────────────────
+    document.getElementById('btn-detect').addEventListener('click', () => {
+      const size = mosaicBlockSize();
+
+      // Normalize whitelist to lowercase for consistent comparison
+      const whitelistEntries = document.getElementById('log-whitelist').value
+        .split(',')
+        .map(c => c.trim().toLowerCase())
+        .filter(c => c.length > 0);
+      const whitelist = new Set(whitelistEntries);
+
+      const lines = [];
+
+      for (let by = 0; by < ROWS; by += size) {
+        for (let bx = 0; bx < COLS; bx += size) {
+          // Normalize baseColor to lowercase for all comparisons
+          const baseColor = pixels[by * COLS + bx].toLowerCase();
+          let uniform = true;
+
+          for (let dy = 0; dy < size && uniform; dy++) {
+            for (let dx = 0; dx < size && uniform; dx++) {
+              const nx = bx + dx, ny = by + dy;
+              if (nx < COLS && ny < ROWS && pixels[ny * COLS + nx].toLowerCase() !== baseColor) {
+                uniform = false;
+              }
+            }
+          }
+
+          if (uniform && !whitelist.has(baseColor)) {
+            const x2 = Math.min(bx + size - 1, COLS - 1);
+            const y2 = Math.min(by + size - 1, ROWS - 1);
+            lines.push(`(${bx}, ${by}, ${x2}, ${y2})  ${baseColor.toUpperCase()}`);
+          }
+        }
+      }
+
+      const logEl = document.getElementById('log-output');
+      const skipped = whitelistEntries.length > 0
+        ? `  (ignoring: ${whitelistEntries.map(c => c.toUpperCase()).join(', ')})`
+        : '';
+      if (lines.length === 0) {
+        logEl.value = `No uniform ${size}×${size} blocks found.${skipped}`;
+      } else {
+        logEl.value = `Block size: ${size}×${size}  —  ${lines.length} block(s) detected${skipped}:\n` + lines.join('\n');
+      }
+    });
+
+    // ── Clear Log ────────────────────────────────────────────
+    document.getElementById('btn-clear-log').addEventListener('click', () => {
+      document.getElementById('log-output').value = '';
+    });
+
+    function floodFill(startIdx, fillColor) {
+      const targetColor = pixels[startIdx];
+      if (targetColor === fillColor) return;
+      const queue   = [startIdx];
+      const visited = new Set([startIdx]);
+      while (queue.length) {
+        const idx = queue.shift();
+        applyColor(idx, fillColor);
+        const x = idx % COLS, y = Math.floor(idx / COLS);
+        for (const [nx, ny] of [[x-1,y],[x+1,y],[x,y-1],[x,y+1]]) {
+          if (nx >= 0 && nx < COLS && ny >= 0 && ny < ROWS) {
+            const ni = ny * COLS + nx;
+            if (!visited.has(ni) && pixels[ni] === targetColor) {
+              visited.add(ni);
+              queue.push(ni);
+            }
+          }
+        }
+      }
+    }
+
+    // ── Helpers ──────────────────────────────────────────────
+    function hexColor(cssHex, spaced = true) {
+      // cssHex is "#rrggbb"
+      const r = cssHex.slice(1, 3).toUpperCase();
+      const g = cssHex.slice(3, 5).toUpperCase();
+      const b = cssHex.slice(5, 7).toUpperCase();
+      return spaced ? `${r} ${g} ${b}` : `${r}${g}${b}`;
+    }
+
+    // ── Export ───────────────────────────────────────────────
+    document.getElementById('btn-export').addEventListener('click', () => {
+      const rows = [];
+      for (let r = 0; r < ROWS; r++) {
+        const rowHex = [];
+        for (let c = 0; c < COLS; c++) {
+          rowHex.push(hexColor(pixels[r * COLS + c]));
+        }
+        rows.push(rowHex.join('  '));
+      }
+      hexOutput.value = rows.join('\n');
+    });
+
+    // ── Hex String ───────────────────────────────────────────
+    document.getElementById('btn-hexstr').addEventListener('click', () => {
+      hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+    });
+
+    // ── Progress bar helpers ──────────────────────────────────
+    const progressWrap = document.getElementById('load-progress-wrap');
+    const progressBar  = document.getElementById('load-progress-bar');
+    function showProgress(pct) {
+      progressWrap.classList.remove('indeterminate');
+      progressWrap.classList.add('active');
+      progressBar.style.width = `${pct}%`;
+    }
+    function showProgressIndeterminate() {
+      progressBar.style.width = '';
+      progressWrap.classList.add('active', 'indeterminate');
+    }
+    function hideProgress() {
+      progressWrap.classList.remove('active', 'indeterminate');
+      progressBar.style.width = '0%';
+    }
+
+    // ── Load File ────────────────────────────────────────────
+    const fileInput = document.getElementById('file-input');
+
+    document.getElementById('btn-load').addEventListener('click', () => {
+      fileInput.value = '';
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', () => {
+      const file = fileInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      showProgress(0);
+      reader.onprogress = (e) => {
+        if (e.lengthComputable) showProgress(e.loaded / e.total * 100);
+      };
+      reader.onload = (e) => {
+        showProgress(100);
+        const raw = e.target.result.replace(/[^0-9a-fA-F]/g, '');
+        if (raw.length < TOTAL * 6) {
+          hideProgress();
+          alert(`File too short: expected ${TOTAL * 6} hex chars, got ${raw.length}.`);
+          return;
+        }
+        for (let i = 0; i < TOTAL; i++) {
+          const color = `#${raw.slice(i * 6, i * 6 + 6).toLowerCase()}`;
+          pixels[i] = color;
+          cells[i].style.background = color;
+        }
+        hexOutput.value = raw.slice(0, TOTAL * 6).toUpperCase();
+        setTimeout(hideProgress, 150);
+      };
+      reader.onerror = () => hideProgress();
+      reader.readAsText(file);
+    });
+
+    // ── Copy ─────────────────────────────────────────────────
+    document.getElementById('btn-copy').addEventListener('click', () => {
+      const text = pixels.map(p => hexColor(p, false)).join('');
+      hexOutput.value = text;
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('btn-copy');
+        const orig = btn.innerHTML;
+        btn.textContent = '✓';
+        setTimeout(() => { btn.innerHTML = orig; }, 1200);
+      });
+    });
+
+    // ── Paste ────────────────────────────────────────────────
+    document.getElementById('btn-paste').addEventListener('click', () => {
+      navigator.clipboard.readText().then((text) => {
+        const raw = text.replace(/[^0-9a-fA-F]/g, '');
+        if (raw.length < TOTAL * 6) {
+          alert(`Clipboard too short: expected ${TOTAL * 6} hex chars, got ${raw.length}.`);
+          return;
+        }
+        for (let i = 0; i < TOTAL; i++) {
+          const chunk = raw.slice(i * 6, i * 6 + 6);
+          applyColor(i, `#${chunk.toLowerCase()}`);
+        }
+        hexOutput.value = raw.slice(0, TOTAL * 6).toUpperCase();
+      }).catch(() => alert('Clipboard read failed. Check browser permissions.'));
+    });
+
+    // ── Save As ──────────────────────────────────────────────
+    document.getElementById('btn-save').addEventListener('click', () => {
+      const text = pixels.map(p => hexColor(p, false)).join('');
+      const blob = new Blob([text], { type: 'text/plain' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = 'pixels.hex';
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    // ── Clear ────────────────────────────────────────────────
+    document.getElementById('btn-clear').addEventListener('click', () => {
+      for (let i = 0; i < TOTAL; i++) {
+        pixels[i] = '#ffffff';
+        cells[i].style.background = '#ffffff';
+      }
+      hexOutput.value = '';
+    });
+
+    // ── Load image (PNG / JPG / …) — via dialog ──────────────
+    const fileInputPng     = document.getElementById('file-input-png');
+    const loadpngDialog    = document.getElementById('loadpng-dialog');
+    const loadpngBackdrop  = document.getElementById('loadpng-backdrop');
+    const loadpngFilename  = document.getElementById('loadpng-filename-display');
+    const loadpngOkBtn     = document.getElementById('loadpng-ok-btn');
+    const loadpngCancelBtn = document.getElementById('loadpng-cancel-btn');
+    const loadpngMaxPx     = document.getElementById('loadpng-maxpx');
+    const loadpngFitRatio  = document.getElementById('loadpng-fit-ratio');
+    const loadpngProgWrap  = document.getElementById('loadpng-prog-wrap');
+    const loadpngProgBar   = document.getElementById('loadpng-prog-bar');
+    let loadpngFile = null;
+
+    function openLoadpngDialog() {
+      loadpngFile = null;
+      fileInputPng.value = '';
+      loadpngFilename.textContent = 'No file selected';
+      loadpngProgWrap.classList.remove('active', 'indeterminate');
+      loadpngProgBar.style.width = '0%';
+      loadpngOkBtn.disabled = false;
+      loadpngCancelBtn.disabled = false;
+      loadpngDialog.classList.add('open');
+      loadpngBackdrop.classList.add('open');
+    }
+
+    function closeLoadpngDialog() {
+      loadpngDialog.classList.remove('open');
+      loadpngBackdrop.classList.remove('open');
+      fileInputPng.value = '';
+    }
+
+    document.getElementById('btn-loadpng').addEventListener('click', openLoadpngDialog);
+    loadpngBackdrop.addEventListener('click', closeLoadpngDialog);
+    loadpngCancelBtn.addEventListener('click', closeLoadpngDialog);
+
+    document.getElementById('loadpng-open-btn').addEventListener('click', () => {
+      fileInputPng.value = '';
+      fileInputPng.click();
+    });
+
+    fileInputPng.addEventListener('change', () => {
+      const file = fileInputPng.files[0];
+      if (!file) return;
+      loadpngFile = file;
+      loadpngFilename.textContent = file.name;
+    });
+
+    loadpngOkBtn.addEventListener('click', () => {
+      if (!loadpngFile) { alert('Please open a file first.'); return; }
+
+      const maxPx    = Math.max(16, Math.min(256, parseInt(loadpngMaxPx.value, 10) || 64));
+      const fitRatio = loadpngFitRatio.checked;
+
+      // Show indeterminate progress inside the dialog
+      loadpngProgBar.style.width = '';
+      loadpngProgWrap.classList.add('active', 'indeterminate');
+      loadpngOkBtn.disabled = true;
+      loadpngCancelBtn.disabled = true;
+
+      const url = URL.createObjectURL(loadpngFile);
+      const img = new Image();
+
+      img.onload = () => {
+        const imgW = img.width;
+        const imgH = img.height;
+
+        if (fitRatio) {
+          // Compute grid size: scale so that the long side equals maxPx, preserve aspect
+          const longSide = Math.max(imgW, imgH);
+          const scale    = Math.min(1, maxPx / longSide);
+          const outW     = Math.max(1, Math.round(imgW * scale));
+          const outH     = Math.max(1, Math.round(imgH * scale));
+          document.getElementById('canvas-cols').value = outW;
+          document.getElementById('canvas-rows').value = outH;
+          rebuildCanvas();
+        }
+
+        // Draw image contain-fitted into the (possibly resized) COLS × ROWS grid
+        const offscreen = document.createElement('canvas');
+        offscreen.width  = COLS;
+        offscreen.height = ROWS;
+        const ctx        = offscreen.getContext('2d');
+        const imgAspect    = imgW / imgH;
+        const canvasAspect = COLS / ROWS;
+        let drawW, drawH, drawX, drawY;
+        if (imgAspect > canvasAspect) {
+          drawW = COLS; drawH = COLS / imgAspect;
+          drawX = 0;    drawY = (ROWS - drawH) / 2;
+        } else {
+          drawH = ROWS; drawW = ROWS * imgAspect;
+          drawX = (COLS - drawW) / 2; drawY = 0;
+        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, COLS, ROWS);
+        ctx.drawImage(img, drawX, drawY, drawW, drawH);
+        URL.revokeObjectURL(url);
+
+        const imgd = ctx.getImageData(0, 0, COLS, ROWS).data;
+        for (let i = 0; i < TOTAL; i++) {
+          const color = '#' +
+            imgd[i * 4    ].toString(16).padStart(2, '0') +
+            imgd[i * 4 + 1].toString(16).padStart(2, '0') +
+            imgd[i * 4 + 2].toString(16).padStart(2, '0');
+          pixels[i] = color;
+          cells[i].style.background = color;
+        }
+        if (autoSync.checked) hexOutput.value = pixels.map(p => hexColor(p, false)).join('');
+
+        // Auto-fit zoom to canvas-wrap constraints (max-width:70vw, max-height:72vh)
+        const fitW = Math.floor((window.innerWidth  * 0.70 - 4) / COLS);
+        const fitH = Math.floor((window.innerHeight * 0.72 - 4) / ROWS);
+        setZoom(Math.max(4, Math.min(64, Math.min(fitW, fitH))));
+
+        // Finish progress, then close dialog
+        loadpngProgWrap.classList.remove('indeterminate');
+        loadpngProgBar.style.width = '100%';
+        setTimeout(() => {
+          closeLoadpngDialog();
+          loadpngOkBtn.disabled = false;
+          loadpngCancelBtn.disabled = false;
+        }, 350);
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(url);
+        loadpngProgWrap.classList.remove('active', 'indeterminate');
+        loadpngOkBtn.disabled = false;
+        loadpngCancelBtn.disabled = false;
+        alert('Failed to load image.');
+      };
+
+      img.src = url;
+    });
+
+    // ── Save as PNG ──────────────────────────────────────────
+    // Renders at 1 output pixel per grid pixel (COLS × ROWS true pixels, 24-bit RGB).
+    document.getElementById('btn-savepng').addEventListener('click', () => {
+      const offscreen = document.createElement('canvas');
+      offscreen.width  = COLS;
+      offscreen.height = ROWS;
+      const ctx  = offscreen.getContext('2d');
+      const imgd = ctx.createImageData(COLS, ROWS);
+      for (let i = 0; i < TOTAL; i++) {
+        const hex = pixels[i];
+        imgd.data[i * 4]     = parseInt(hex.slice(1, 3), 16); // R
+        imgd.data[i * 4 + 1] = parseInt(hex.slice(3, 5), 16); // G
+        imgd.data[i * 4 + 2] = parseInt(hex.slice(5, 7), 16); // B
+        imgd.data[i * 4 + 3] = 255;                           // A (fully opaque)
+      }
+      ctx.putImageData(imgd, 0, 0);
+      offscreen.toBlob((blob) => {
+        const url = URL.createObjectURL(blob);
+        const a   = document.createElement('a');
+        a.href     = url;
+        a.download = `pixels_${COLS}x${ROWS}.png`;
+        a.click();
+        URL.revokeObjectURL(url);
+      });
+    });
+
+    // ── Canvas resize ────────────────────────────────────────
+    document.getElementById('btn-resize').addEventListener('click', rebuildCanvas);
+    document.getElementById('canvas-cols').addEventListener('keydown', (e) => { if (e.key === 'Enter') rebuildCanvas(); });
+    document.getElementById('canvas-rows').addEventListener('keydown', (e) => { if (e.key === 'Enter') rebuildCanvas(); });
+
+    // ── Aspect ratio lock ─────────────────────────────────────
+    let lockedRatio = null; // cols / rows when locked
+    const ratioLockEl = document.getElementById('ratio-lock');
+    const colsInput   = document.getElementById('canvas-cols');
+    const rowsInput   = document.getElementById('canvas-rows');
+    ratioLockEl.addEventListener('change', () => {
+      if (ratioLockEl.checked) {
+        const c = parseInt(colsInput.value, 10) || COLS;
+        const r = parseInt(rowsInput.value, 10) || ROWS;
+        lockedRatio = c / r;
+      } else {
+        lockedRatio = null;
+      }
+    });
+    colsInput.addEventListener('input', () => {
+      if (!ratioLockEl.checked || !lockedRatio) return;
+      const c = parseInt(colsInput.value, 10);
+      if (c > 0) rowsInput.value = Math.max(1, Math.min(200, Math.round(c / lockedRatio)));
+    });
+    rowsInput.addEventListener('input', () => {
+      if (!ratioLockEl.checked || !lockedRatio) return;
+      const r = parseInt(rowsInput.value, 10);
+      if (r > 0) colsInput.value = Math.max(1, Math.min(200, Math.round(r * lockedRatio)));
+    });
+
+    // ── Zoom ─────────────────────────────────────────────────
+    document.getElementById('zoom-range').addEventListener('input', (e) => {
+      setZoom(parseInt(e.target.value, 10));
+    });
+
+    // ── Grid toggle ──────────────────────────────────────────
+    document.getElementById('show-grid').addEventListener('change', (e) => {
+      canvasEl.classList.toggle('no-grid', !e.target.checked);
+    });
+  </script>
+
+<!-- © Copyright 2026 Light Matrix. All rights reserved. -->
+
+<footer style="
+  width: 100%;
+  margin-top: auto;
+  padding: 18px 0 10px;
+  border-top: 1px solid #333;
+  text-align: center;
+  font-family: monospace;
+  font-size: 11px;
+  color: #666;
+  letter-spacing: 0.03em;
+">
+  <span>&copy; 2026 Light Matrix. All rights reserved.</span>
+  &nbsp;&middot;&nbsp;
+  <span>Light Matrix Pixel Editor v1.0</span>
+</footer>
+
+</body>
+</html>
